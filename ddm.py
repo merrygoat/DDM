@@ -28,11 +28,11 @@ def loadimages(num_images, analysis_radius):
             tmp_array = tmp_array * (first_mean / tmp_mean)
 
         # do the Fourier transform
-        ftimagelist.append(np.fft.fft2(tmp_array, s=(ft_size, ft_size)))
+        ft_tmp = (np.fft.fft2(tmp_array, s=(ft_size, ft_size)))
         # Shift the quadrants so that low spatial frequencies are in the center of the 2D fourier transformed image.
-        ftimagelist[i] = np.fft.fftshift(ftimagelist[i])
+        ft_tmp = np.fft.fftshift(ft_tmp)
         # cut the image down to only include analysis_radius worth of pixels
-        ftimagelist[i] = ftimagelist[i][cut_image_shape[0]:cut_image_shape[1], cut_image_shape[2]:cut_image_shape[3]]
+        ftimagelist.append(ft_tmp[cut_image_shape[0]:cut_image_shape[1], cut_image_shape[2]:cut_image_shape[3]].copy())
 
     print("Image Loading complete. Beginning analysis.")
     return ftimagelist, num_files
@@ -89,7 +89,7 @@ def imagediff(image1, image2):
 
 
 def twodpowerspectrum(image):
-    return np.abs(image) ** 2
+    return image.real ** 2 + image.imag ** 2
 
 
 def main():
