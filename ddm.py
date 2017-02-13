@@ -2,6 +2,7 @@ import numpy as np
 from PIL import Image
 from tqdm import tqdm
 from glob import glob
+import numba
 
 
 def loadimages(num_images, analysis_radius):
@@ -80,14 +81,33 @@ def initializeazimuthalaverage(image, binsize):
     return r, nbins, maxbin, histosamples
 
 
+def initializeintegerazimuthalaverage(image):
+
+    y, x = np.indices(image.shape)
+    center = np.array([(image.shape[0] - 1) / 2.0, (image.shape[0] - 1) / 2.0])
+    r = np.array(np.hypot(x - center[0], y - center[1]), dtype=np.int)
+    maxbin = np.max(r)
+    nbins = maxbin+1
+    bins = np.linspace(0, maxbin, nbins+1)
+    histosamples = np.histogram(r, bins, )[0]
+
+    return r, nbins, maxbin, histosamples
+
+
 def azimuthalaverage(r, nbins, maxbin, image, histosamples):
     return np.histogram(r, nbins, range=(0, maxbin), weights=image)[0] / histosamples
 
 
+def integerazimuthalaverage(r, image, histosamples):
+    return np.bincount(np.ravel(r), weights=np.ravel(image)) / histosamples
+
+
+@numba.jit
 def imagediff(image1, image2):
     return image1 - image2
 
 
+@numba.jit
 def twodpowerspectrum(image):
     return image.real ** 2 + image.imag ** 2
 
@@ -101,7 +121,10 @@ def main():
     # Load the images
     ftimagelist, numimages = loadimages(images_to_load, analysisradius)
 
-    r, nbins, maxbin, histosamples,  = initializeazimuthalaverage(ftimagelist[0], binsize)
+    if binsize == 1:
+        r, nbins, maxbin, histosamples = initializeintegerazimuthalaverage(ftimagelist[0])
+    else:
+        r, nbins, maxbin, histosamples,  = initializeazimuthalaverage(ftimagelist[0], binsize)
 
     ftOneDSlices = np.zeros((numimages, nbins))
     samplecount = np.zeros(numimages)
@@ -117,8 +140,11 @@ def main():
             ftdiff = imagediff(ftimagelist[i], ftimagelist[j])
             # Calculate the 2D power spectrum
             ftdiff = twodpowerspectrum(ftdiff)
+            if binsize == 1:
+                ftOneDSlices[j - i] += integerazimuthalaverage(r, ftdiff, histosamples)
+            else:
+                ftOneDSlices[j - i] += azimuthalaverage(r, nbins, maxbin, ftdiff, histosamples)
 
-            ftOneDSlices[j - i] += np.abs(azimuthalaverage(r, nbins, maxbin, ftdiff, histosamples))
             samplecount[j - i] += 1
             loop_counter += 1
         pbar.update(loop_counter)
