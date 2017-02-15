@@ -78,14 +78,10 @@ def initializeazimuthalaverage(image, binsize):
     bins = np.linspace(0, maxbin, nbins+1)
     histosamples = np.histogram(r, bins, )[0]
 
-    return r, nbins, maxbin, histosamples
+    return r, nbins, histosamples
 
 
-def azimuthalaverage(r, nbins, maxbin, image, histosamples):
-    return np.histogram(r, nbins, range=(0, maxbin), weights=image)[0] / histosamples
-
-
-def integerazimuthalaverage(r, image, histosamples):
+def azimuthalaverage(r, image, histosamples):
     return np.bincount(np.ravel(r), weights=np.ravel(image)) / histosamples
 
 
@@ -108,7 +104,7 @@ def main():
     # Load the images
     ftimagelist, numimages = loadimages(images_to_load, analysisradius)
 
-    r, nbins, maxbin, histosamples,  = initializeazimuthalaverage(ftimagelist[0], binsize)
+    r, nbins, histosamples,  = initializeazimuthalaverage(ftimagelist[0], binsize)
 
     ftOneDSlices = np.zeros((numimages, nbins))
     samplecount = np.zeros(numimages)
@@ -124,7 +120,7 @@ def main():
             ftdiff = imagediff(ftimagelist[i], ftimagelist[j])
             # Calculate the 2D power spectrum
             ftdiff = twodpowerspectrum(ftdiff)
-            ftOneDSlices[j - i] += azimuthalaverage(r, nbins, maxbin, ftdiff, histosamples)
+            ftOneDSlices[j - i] += azimuthalaverage(r, ftdiff, histosamples)
 
             samplecount[j - i] += 1
             loop_counter += 1
