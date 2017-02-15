@@ -72,20 +72,7 @@ def initializeazimuthalaverage(image, binsize):
 
     y, x = np.indices(image.shape)
     center = np.array([(image.shape[0] - 1) / 2.0, (image.shape[0] - 1) / 2.0])
-    r = np.hypot(x - center[0], y - center[1])
-    maxbin = int(np.ceil(np.max(r)))
-    nbins = int(np.ceil(maxbin / binsize))
-    bins = np.linspace(0, maxbin, nbins + 1)
-    histosamples = np.histogram(r, bins, )[0]
-
-    return r, nbins, maxbin, histosamples
-
-
-def initializeintegerazimuthalaverage(image):
-
-    y, x = np.indices(image.shape)
-    center = np.array([(image.shape[0] - 1) / 2.0, (image.shape[0] - 1) / 2.0])
-    r = np.array(np.hypot(x - center[0], y - center[1]), dtype=np.int)
+    r = np.array(np.hypot(x - center[0], y - center[1])/binsize, dtype=np.int)
     maxbin = np.max(r)
     nbins = maxbin+1
     bins = np.linspace(0, maxbin, nbins+1)
@@ -121,10 +108,7 @@ def main():
     # Load the images
     ftimagelist, numimages = loadimages(images_to_load, analysisradius)
 
-    if binsize == 1:
-        r, nbins, maxbin, histosamples = initializeintegerazimuthalaverage(ftimagelist[0])
-    else:
-        r, nbins, maxbin, histosamples,  = initializeazimuthalaverage(ftimagelist[0], binsize)
+    r, nbins, maxbin, histosamples,  = initializeazimuthalaverage(ftimagelist[0], binsize)
 
     ftOneDSlices = np.zeros((numimages, nbins))
     samplecount = np.zeros(numimages)
@@ -140,10 +124,7 @@ def main():
             ftdiff = imagediff(ftimagelist[i], ftimagelist[j])
             # Calculate the 2D power spectrum
             ftdiff = twodpowerspectrum(ftdiff)
-            if binsize == 1:
-                ftOneDSlices[j - i] += integerazimuthalaverage(r, ftdiff, histosamples)
-            else:
-                ftOneDSlices[j - i] += azimuthalaverage(r, nbins, maxbin, ftdiff, histosamples)
+            ftOneDSlices[j - i] += azimuthalaverage(r, nbins, maxbin, ftdiff, histosamples)
 
             samplecount[j - i] += 1
             loop_counter += 1
