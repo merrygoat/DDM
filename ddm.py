@@ -2,14 +2,13 @@ import numpy as np
 from PIL import Image
 from tqdm import tqdm
 from glob import glob
+from sys import argv
 import numba
 
 
-def loadimages(num_images, analysis_radius):
+def loadimages(num_images, analysis_radius, image_directory, file_prefix):
     print("Loading images.")
     ftimagelist = []
-    image_directory = "E:\\Confocal\\STED\\Hard Spheres\\17-02-02\\RITC 23\\i\\images\\"
-    file_prefix = "i_"
 
     cut_image_shape, num_files = setup_load_images(num_images, image_directory, file_prefix, analysis_radius)
 
@@ -96,10 +95,11 @@ def twodpowerspectrum(image):
 
 
 def main():
-    binsize = 1  # Bin size for the histogram used in the radial averaging of the Fourier transform (FT)
-    analysisradius = 100  # Radius of FT radial averaging. Set to 0 for analysis of full FT
-    cutoff = 250  # Maximum averaging for each timestep. Set to 0 for analysis of all images.
-    images_to_load = 0  # Number of timesteps to load from disk. Set to 0 for all available images.
+	if len(argv) != 7:
+		print("Incorrect syntax. Use ./ddm.py binsize, analysis_radius, cutoff, images_to_load, image_directory file_prefix.\n See Readme for more detials.")
+	else:
+		binsize, analysisradius, cutoff, images_to_load, image_directory, file_prefix = sys.argv[1:]
+	
 
     # Load the images
     ftimagelist, numimages = loadimages(images_to_load, analysisradius)
@@ -133,5 +133,5 @@ def main():
     ftOneDSlices = ftOneDSlices / (ftimagelist[0].shape[0] * ftimagelist[0].shape[1])
 
     np.savetxt("FTOneDSlices.txt", ftOneDSlices)
-
-main()
+	
+main(1, 100, 250, 0, "E:\\Confocal\\STED\\Hard Spheres\\17-02-02\\RITC 23\\i\\images\\", "i_" )
