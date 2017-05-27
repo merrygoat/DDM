@@ -68,13 +68,12 @@ def setup_load_images(num_images, image_directory, file_prefix, analysis_radius)
 
 
 def initializeazimuthalaverage(image, binsize):
-
     y, x = np.indices(image.shape)
     center = np.array([(image.shape[0] - 1) / 2.0, (image.shape[0] - 1) / 2.0])
-    r = np.array(np.hypot(x - center[0], y - center[1])/binsize, dtype=np.int)
+    r = np.array(np.hypot(x - center[0], y - center[1]) / binsize, dtype=np.int)
     maxbin = np.max(r)
-    nbins = maxbin+1
-    bins = np.linspace(0, maxbin, nbins+1)
+    nbins = maxbin + 1
+    bins = np.linspace(0, maxbin, nbins + 1)
     histosamples = np.histogram(r, bins, )[0]
 
     return r, nbins, histosamples
@@ -95,16 +94,28 @@ def twodpowerspectrum(image):
 
 
 def main():
-	if len(argv) != 7:
-		print("Incorrect syntax. Use ./ddm.py binsize, analysis_radius, cutoff, images_to_load, image_directory file_prefix.\n See Readme for more detials.")
-	else:
-		binsize, analysisradius, cutoff, images_to_load, image_directory, file_prefix = sys.argv[1:]
-	
+    ### This function can be called from the command line. ###
+    
+    if len(argv) != 7:
+        print("Incorrect syntax. Use ./ddm.py binsize, analysis_radius, cutoff, images_to_load, image_directory file_prefix.\n See Readme for more detials.")
+        raise KeyboardInterrupt
+    else:
+        binsize = int(argv[1])
+        analysisradius = int(argv[2])
+        cutoff = int(argv[3])
+        images_to_load = int(argv[4])
+        image_directory = argv[5]
+        file_prefix = argv[6]
+        ddm_processing(binsize, analysisradius, cutoff, images_to_load, image_directory, file_prefix)
 
+
+def ddm_processing(binsize, analysisradius, cutoff, images_to_load, image_directory, file_prefix):
+    ### If calling functions from within python this is the main loop. ###
+    
     # Load the images
-    ftimagelist, numimages = loadimages(images_to_load, analysisradius)
+    ftimagelist, numimages = loadimages(images_to_load, analysisradius, image_directory, file_prefix)
 
-    r, nbins, histosamples,  = initializeazimuthalaverage(ftimagelist[0], binsize)
+    r, nbins, histosamples, = initializeazimuthalaverage(ftimagelist[0], binsize)
 
     ftOneDSlices = np.zeros((numimages, nbins))
     samplecount = np.zeros(numimages)
@@ -131,7 +142,5 @@ def main():
     for i in range(1, numimages):
         ftOneDSlices[i] = ftOneDSlices[i] / samplecount[i]
     ftOneDSlices = ftOneDSlices / (ftimagelist[0].shape[0] * ftimagelist[0].shape[1])
-
+	print("Analysis Complete. Result saved to FTOneDSlices.txt")
     np.savetxt("FTOneDSlices.txt", ftOneDSlices)
-	
-main(1, 100, 250, 0, "E:\\Confocal\\STED\\Hard Spheres\\17-02-02\\RITC 23\\i\\images\\", "i_" )
