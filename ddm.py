@@ -7,6 +7,8 @@ import numba
 
 
 def loadimages(num_images, analysis_radius, image_directory, file_prefix):
+    """Loads images, corrects for bleaching, performs fourier transforms and cuts images according to the analysis
+    radius parameter. """
     print("Loading images.")
     ftimagelist = []
 
@@ -94,8 +96,8 @@ def twodpowerspectrum(image):
 
 
 def main():
-    ### This function can be called from the command line. ###
-    
+    """This function can be called from the command line."""
+
     if len(argv) != 7:
         print("Incorrect syntax. Use ./ddm.py binsize, analysis_radius, cutoff, images_to_load, image_directory file_prefix.\n See Readme for more detials.")
         raise KeyboardInterrupt
@@ -110,8 +112,8 @@ def main():
 
 
 def ddm_processing(binsize, analysisradius, cutoff, images_to_load, image_directory, file_prefix):
-    ### If calling functions from within python this is the main loop. ###
-    
+    """If calling functions from within python this is the main loop."""
+
     # Load the images
     ftimagelist, numimages = loadimages(images_to_load, analysisradius, image_directory, file_prefix)
 
@@ -142,5 +144,5 @@ def ddm_processing(binsize, analysisradius, cutoff, images_to_load, image_direct
     for i in range(1, numimages):
         ftOneDSlices[i] = ftOneDSlices[i] / samplecount[i]
     ftOneDSlices = ftOneDSlices / (ftimagelist[0].shape[0] * ftimagelist[0].shape[1])
-	print("Analysis Complete. Result saved to FTOneDSlices.txt")
+    print("Analysis Complete. Result saved to FTOneDSlices.txt")
     np.savetxt("FTOneDSlices.txt", ftOneDSlices)
