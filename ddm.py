@@ -2,7 +2,7 @@ import numpy as np
 from PIL import Image
 from tqdm import tqdm
 from glob import glob
-from sys import argv
+from tempfile import TemporaryFile
 import numba
 
 
@@ -10,9 +10,13 @@ def loadimages(num_images, analysis_radius, image_directory, file_prefix, file_s
     """Loads images, corrects for bleaching, performs fourier transforms and cuts images according to the analysis
     radius parameter. """
     print("Loading images.")
-    ftimagelist = []
 
     cut_image_shape, num_files = setup_load_images(num_images, image_directory, file_prefix, file_suffix, analysis_radius)
+
+    tmp_file = TemporaryFile()
+    cut_size = analysis_radius*2
+    ftimagelist = np.memmap(tmp_file, mode='w+', dtype=np.complex128,
+                            shape=(num_files, cut_size, cut_size))
 
     for i in range(num_files):
         tmp_image = Image.open(image_directory + file_prefix + '{:04d}'.format(i) + file_suffix)
@@ -34,10 +38,11 @@ def loadimages(num_images, analysis_radius, image_directory, file_prefix, file_s
         # Shift the quadrants so that low spatial frequencies are in the center of the 2D fourier transformed image.
         ft_tmp = np.fft.fftshift(ft_tmp)
         # cut the image down to only include analysis_radius worth of pixels
-        ftimagelist.append(ft_tmp[cut_image_shape[0]:cut_image_shape[1], cut_image_shape[2]:cut_image_shape[3]].copy())
+        ft_tmp = ft_tmp[cut_image_shape[0]:cut_image_shape[1], cut_image_shape[2]:cut_image_shape[3]]
+        ftimagelist[i] = ft_tmp.copy()
 
     print("Image Loading complete. Beginning analysis.")
-    return ftimagelist, num_files
+    return ftimagelist, num_files, tmp_file
 
 
 def setup_load_images(num_images, image_directory, file_prefix, file_suffix, analysis_radius):
@@ -95,28 +100,11 @@ def twodpowerspectrum(image):
     return image.real ** 2 + image.imag ** 2
 
 
-def main():
-    """This function will be called from the command line."""
-
-    if len(argv) != 8:
-        print("Incorrect syntax. Use ./ddm.py binsize, analysis_radius, cutoff, images_to_load, image_directory file_prefix file_suffix.\n See Readme for more detials.")
-        raise KeyboardInterrupt
-    else:
-        binsize = int(argv[1])
-        analysisradius = int(argv[2])
-        cutoff = int(argv[3])
-        images_to_load = int(argv[4])
-        image_directory = argv[5]
-        file_prefix = argv[6]
-        file_suffix = argv[7]
-        ddm_processing(binsize, analysisradius, cutoff, images_to_load, image_directory, file_prefix, file_suffix)
-
-
 def ddm_processing(binsize, analysisradius, cutoff, images_to_load, image_directory, file_prefix, file_suffix):
     """If calling functions from within python this is the main loop."""
 
     # Load the images
-    ftimagelist, numimages = loadimages(images_to_load, analysisradius, image_directory, file_prefix, file_suffix)
+    ftimagelist, numimages, tmp_file = loadimages(images_to_load, analysisradius, image_directory, file_prefix, file_suffix)
 
     r, nbins, histosamples, = initializeazimuthalaverage(ftimagelist[0], binsize)
 
@@ -148,4 +136,4 @@ def ddm_processing(binsize, analysisradius, cutoff, images_to_load, image_direct
     print("Analysis Complete. Result saved to FTOneDSlices.txt")
     np.savetxt("FTOneDSlices.txt", ftOneDSlices)
 
-main()
+    tmp_file.close()

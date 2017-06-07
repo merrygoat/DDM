@@ -44,7 +44,7 @@ def plot_wavevector_range(ddm_dataset, wavevectors):
     plt.xlabel(r'Time (s)', fontsize=16)
     # plt.ylim(0, 5E8)
     # plt.xlim(1, 200)
-    plt.legend(bbox_to_anchor = (1.5,1.5))
+    plt.legend(bbox_to_anchor=(1.5, 1.5))
     # plt.savefig("wavevectors.png", dpi=300, bbox_inches='tight')
     plt.show()
 
