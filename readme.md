@@ -15,3 +15,4 @@ Variables which have to be passed to the analysis code are:
 * images_to_load  -	Number of timesteps to load from disk. Set to 0 for all available images.
 * image_directory -	Directory path of images to analyse, end with slash
 * file_prefix     - Prefix for file. Program assumes files are numbered sequentially from 0 with 4 digits i.e. image_0000.png, image_0001.png...
+* file_suffix     - Image file type, ".png" or ".tif" are know to work. Other formats untested.
