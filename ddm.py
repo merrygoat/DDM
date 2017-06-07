@@ -119,11 +119,11 @@ def ddm_processing(binsize, analysisradius, cutoff, images_to_load, image_direct
     for framediff in range(1, numimages):
         potential_frames = numimages - framediff
         if (numimages-framediff) < cutoff:
-            frame_counter_max = potential_frames + 1
+            frame_counter_max = potential_frames
         else:
             frame_counter_max = cutoff
-        for frame_counter in range(1, frame_counter_max):
-            image1 = int((potential_frames/cutoff)*frame_counter)
+        for frame_counter in range(0, frame_counter_max):
+            image1 = int(potential_frames*frame_counter/frame_counter_max)
             image2 = image1 + framediff
             ftdiff = imagediff(ftimagelist[image1], ftimagelist[image2])
             # Calculate the 2D power spectrum
@@ -143,5 +143,3 @@ def ddm_processing(binsize, analysisradius, cutoff, images_to_load, image_direct
     np.savetxt("FTOneDSlices.txt", ftOneDSlices)
 
     tmp_file.close()
-
-ddm_processing(1, 100, 100, 100, "example_images//", "iii_", ".png")
