@@ -41,7 +41,6 @@ def loadimages(num_images, analysis_radius, image_directory, file_prefix, file_s
         ft_tmp = ft_tmp[cut_image_shape[0]:cut_image_shape[1], cut_image_shape[2]:cut_image_shape[3]]
         ftimagelist[i] = ft_tmp.copy()
 
-    print("Image Loading complete. Beginning analysis.")
     return ftimagelist, num_files, tmp_file
 
 
@@ -105,9 +104,9 @@ def ddm_processing(binsize, analysisradius, cutoff, images_to_load, image_direct
 
     # Load the images
     ftimagelist, numimages, tmp_file = loadimages(images_to_load, analysisradius, image_directory, file_prefix, file_suffix)
+    print("Image Loading complete. Beginning analysis.")
 
     r, nbins, histosamples, = initializeazimuthalaverage(ftimagelist[0], binsize)
-
     ftOneDSlices = np.zeros((numimages, nbins))
     samplecount = np.zeros(numimages)
 
@@ -115,16 +114,16 @@ def ddm_processing(binsize, analysisradius, cutoff, images_to_load, image_direct
         cutoff = numimages
 
     loop_counter = 0
-    #pbar = tqdm(total=int(((cutoff - 1) ** 2 + (cutoff - 1)) / 2 + (numimages - cutoff) * cutoff))
+    pbar = tqdm(total=int(((cutoff - 1) ** 2 + (cutoff - 1)) / 2 + (numimages - cutoff) * cutoff))
     # Do the analysis
     for framediff in range(1, numimages):
         potential_frames = numimages - framediff
-        if (numimages-framediff) < potential_frames:
-            i_max = potential_frames
+        if (numimages-framediff) < cutoff:
+            frame_counter_max = potential_frames + 1
         else:
-            i_max = cutoff
-        for i in range(1, i_max):
-            image1 = int((potential_frames/cutoff)*i)
+            frame_counter_max = cutoff
+        for frame_counter in range(1, frame_counter_max):
+            image1 = int((potential_frames/cutoff)*frame_counter)
             image2 = image1 + framediff
             ftdiff = imagediff(ftimagelist[image1], ftimagelist[image2])
             # Calculate the 2D power spectrum
@@ -132,9 +131,9 @@ def ddm_processing(binsize, analysisradius, cutoff, images_to_load, image_direct
             ftOneDSlices[framediff] += azimuthalaverage(r, ftdiff, histosamples)
             samplecount[framediff] += 1
             loop_counter += 1
-        #pbar.update(loop_counter)
-        #loop_counter = 0
-    print(loop_counter)
+        pbar.update(loop_counter)
+        loop_counter = 0
+    pbar.close()
 
     # Normalise results, skipping the first empty row
     for i in range(1, numimages):
