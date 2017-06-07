@@ -115,19 +115,26 @@ def ddm_processing(binsize, analysisradius, cutoff, images_to_load, image_direct
         cutoff = numimages
 
     loop_counter = 0
-    pbar = tqdm(total=int(((cutoff - 1) ** 2 + (cutoff - 1)) / 2 + (numimages - cutoff) * cutoff))
+    #pbar = tqdm(total=int(((cutoff - 1) ** 2 + (cutoff - 1)) / 2 + (numimages - cutoff) * cutoff))
     # Do the analysis
-    for i in range(cutoff):
-        for j in range(i + 1, numimages):
-            ftdiff = imagediff(ftimagelist[i], ftimagelist[j])
+    for framediff in range(1, numimages):
+        potential_frames = numimages - framediff
+        if (numimages-framediff) < potential_frames:
+            i_max = potential_frames
+        else:
+            i_max = cutoff
+        for i in range(1, i_max):
+            image1 = int((potential_frames/cutoff)*i)
+            image2 = image1 + framediff
+            ftdiff = imagediff(ftimagelist[image1], ftimagelist[image2])
             # Calculate the 2D power spectrum
             ftdiff = twodpowerspectrum(ftdiff)
-            ftOneDSlices[j - i] += azimuthalaverage(r, ftdiff, histosamples)
-
-            samplecount[j - i] += 1
+            ftOneDSlices[framediff] += azimuthalaverage(r, ftdiff, histosamples)
+            samplecount[framediff] += 1
             loop_counter += 1
-        pbar.update(loop_counter)
-        loop_counter = 0
+        #pbar.update(loop_counter)
+        #loop_counter = 0
+    print(loop_counter)
 
     # Normalise results, skipping the first empty row
     for i in range(1, numimages):
@@ -137,3 +144,5 @@ def ddm_processing(binsize, analysisradius, cutoff, images_to_load, image_direct
     np.savetxt("FTOneDSlices.txt", ftOneDSlices)
 
     tmp_file.close()
+
+ddm_processing(1, 100, 100, 100, "example_images//", "iii_", ".png")
