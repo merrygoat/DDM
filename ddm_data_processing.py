@@ -83,19 +83,20 @@ def plot_azimuthal_angle(data_series, frame_number, q_in_pixels=True):
     for i in range(0, data_series.length):
         ddm_dataset = data_series.datasets[i]
         inverse_diameter = 1/ddm_dataset.pixels_per_particle
-        # Plot the series in terms of q (1/d)
-        if not q_in_pixels:
-            plt.semilogy(np.arange(inverse_diameter, (inverse_diameter*(ddm_dataset.data[frame_number, :].shape[0])) + inverse_diameter, inverse_diameter), ddm_dataset.data[frame_number, :])
-        # Plot the series in terms of q (pixels)
+
+        if q_in_pixels:
+            # Plot the series in terms of q (pixels)
+            plt.semilogy(np.arange(1, (ddm_dataset.data[frame_number, 1:].shape[0]) + 1, 1), ddm_dataset.data[frame_number, 1:])
         else:
-            plt.semilogy(np.arange(1, (ddm_dataset.data[frame_number, :].shape[0]) + 1, 1), ddm_dataset.data[frame_number, :])
+            # Plot the series in terms of q (1/d)
+            plt.semilogy(np.arange(inverse_diameter, (inverse_diameter * (ddm_dataset.data[frame_number, 1:].shape[0])) + inverse_diameter, inverse_diameter), ddm_dataset.data[frame_number, 1:])
 
     plt.ylabel(r'\mid F_D(q; \Delta{t})\mid^2', fontsize=16)
     if q_in_pixels:
         plt.xlabel(r'q (pixels)', fontsize=16)
     else:
         plt.xlabel(r'q (1/\sigma)', fontsize=16)
-    plt.xlim(0, 200)
+    plt.xlim(0, 100)
     # plt.ylim(5E6, 1E9)
     # plt.savefig("radialprofile.png", dpi=300)
     plt.show()
