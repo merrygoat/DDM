@@ -93,10 +93,10 @@ def plot_azimuthal_angle(data_series, frame_number, q_in_pixels=True):
 
     plt.ylabel(r'\mid F_D(q; \Delta{t})\mid^2', fontsize=16)
     if q_in_pixels:
-        plt.xlabel(r'q (pixels)', fontsize=16)
+        plt.xlabel(r'q (pixels^{-1})', fontsize=16)
     else:
-        plt.xlabel(r'q (1/\sigma)', fontsize=16)
-    plt.xlim(0, 100)
+        plt.xlabel(r'q (\sigma^-1)', fontsize=16)
+    #plt.xlim(0, 100)
     # plt.ylim(5E6, 1E9)
     # plt.savefig("radialprofile.png", dpi=300)
     plt.show()
