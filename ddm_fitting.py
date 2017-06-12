@@ -45,7 +45,7 @@ def fit_curves(path, timestep, n_data_points, debug=False):
     #plt.loglog(xdata[10:], coefficients[10:, 2], "o-")
     #plt.show()
     np.savetxt("fittingparameters.txt", coefficients)
-	print("Fitting parameters saved to fittingparameters.txt."
+    print("Fitting parameters saved to fittingparameters.txt.")
 
 
 def exponential_fit(x, a, b, tau):
