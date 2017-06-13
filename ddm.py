@@ -19,6 +19,8 @@ def loadimages(num_images, analysis_radius, image_directory, file_prefix, file_s
 
     for i in range(num_files):
         tmp_image = Image.open(image_directory + file_prefix + '{:04d}'.format(i) + file_suffix)
+        if tmp_image.mode == "RGB":
+            tmp_image = tmp_image.convert(mode='L')
         tmp_array = np.array(tmp_image.copy())
 
         image_size = tmp_array.shape
