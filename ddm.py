@@ -11,7 +11,7 @@ def loadimages(num_images, analysis_radius, image_directory, file_prefix, file_s
     radius parameter. """
     print("Loading images.")
 
-    num_files = setup_load_images(num_images, image_directory, file_prefix, file_suffix)
+    num_files, analysis_radius = setup_load_images(num_images, image_directory, file_prefix, file_suffix, analysis_radius)
 
     tmp_file = TemporaryFile()
     ftimagelist = np.memmap(tmp_file, mode='w+', dtype=np.complex128,
@@ -46,7 +46,7 @@ def loadimages(num_images, analysis_radius, image_directory, file_prefix, file_s
     return ftimagelist, num_files, tmp_file
 
 
-def setup_load_images(num_images, image_directory, file_prefix, file_suffix):
+def setup_load_images(num_images, image_directory, file_prefix, file_suffix, analysis_radius):
     if num_images == 0:
         file_list = glob(image_directory + file_prefix + "*" + file_suffix)
         num_files = len(file_list)
@@ -56,7 +56,12 @@ def setup_load_images(num_images, image_directory, file_prefix, file_suffix):
     else:
         num_files = num_images
 
-    return num_files
+    min_dimension = np.min(Image.open(image_directory + file_prefix + '0000' + file_suffix).size)
+
+    if analysis_radius == 0 or analysis_radius > min_dimension:
+        analysis_radius = int(min_dimension/2)
+
+    return num_files, analysis_radius
 
 
 def initializeazimuthalaverage(image, binsize):
