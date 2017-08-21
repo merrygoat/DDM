@@ -6,7 +6,7 @@ from tempfile import TemporaryFile
 import numba
 
 
-def loadimages(num_images, analysis_radius, image_directory, file_prefix, file_suffix, num_octaves):
+def loadimages(num_images, analysis_radius, image_directory, file_prefix, file_suffix, octave_number):
     """Loads images, corrects for bleaching, performs fourier transforms and cuts images according to the analysis
     radius parameter. """
     print("Loading images.")
@@ -15,8 +15,8 @@ def loadimages(num_images, analysis_radius, image_directory, file_prefix, file_s
 
     num_files, analysis_radius, min_dimension = setup_load_images(num_images, image_directory, file_prefix, file_suffix, analysis_radius)
 
-    if num_octaves != 0:
-        min_dimension = int(np.max((np.ceil(np.log2(min_dimension)))-num_octaves)**2)
+    if octave_number != 1:
+        min_dimension = int(np.max((np.ceil(np.log2(min_dimension))) - octave_number - 1) ** 2)
         if min_dimension < minimum_octave_size:
             return 1
 
@@ -24,7 +24,7 @@ def loadimages(num_images, analysis_radius, image_directory, file_prefix, file_s
         analysis_radius = min_dimension
 
     tmp_file = TemporaryFile()
-    ftimagelist = np.memmap(tmp_file, mode='w+', dtype=np.complex128, shape=((num_octaves+1**2), num_files, analysis_radius*2, analysis_radius))
+    ftimagelist = np.memmap(tmp_file, mode='w+', dtype=np.complex128, shape=(num_files, (octave_number ** 2), analysis_radius*2, analysis_radius))
 
     for file in range(num_files):
         tmp_image = Image.open(image_directory + file_prefix + '{:04d}'.format(file) + file_suffix)
@@ -32,27 +32,35 @@ def loadimages(num_images, analysis_radius, image_directory, file_prefix, file_s
             tmp_image = tmp_image.convert(mode='L')
         tmp_array = np.array(tmp_image.copy())
 
-        for octave_segment in range((num_octaves + 1 ** 2)):
-
+        # Correct for bleaching by averaging the brightness across all images
+        if i == 0:
+            first_mean = np.mean(tmp_array)
+        else:
+            tmp_mean = np.mean(tmp_array)
+            tmp_array = tmp_array * (first_mean / tmp_mean)
+        
+        for octave_segment in range((octave_number ** 2)):
             image_size = tmp_array.shape
             # calculate the nearest power of 2 to pad the FT array
-            ft_size = int(np.max(np.power(2, np.ceil(np.log2(image_size)))))
-
-            # Correct for bleaching by averaging the brightness across all images
-            if i == 0:
-                first_mean = np.mean(tmp_array)
+            if octave == 0:
+                ft_size = int(np.max(np.power(2, np.ceil(np.log2(image_size)))))
+                tmp_octave = tmp_array
             else:
-                tmp_mean = np.mean(tmp_array)
-                tmp_array = tmp_array * (first_mean / tmp_mean)
+                ft_size = min_dimension
+                octave_column = octave_segment % octave_number
+                col_indices = [octave_column * min_dimension, octave_column * min_dimension + min_dimension]
+                octave_row = octave_segment // octave_number
+                row_indices = [octave_row * min_dimension, octave_row * min_dimension + min_dimension]
+                tmp_octave == tmp_array[col_indices[0]:col_indices[1], row_indices[0]:row_indices[1]]
 
             # do the Fourier transform
-            ft_tmp = (np.fft.rfft2(tmp_array, s=(ft_size, ft_size)))
+            ft_tmp = (np.fft.rfft2(tmp_octave, s=(ft_size, ft_size)))
             # Shift the quadrants so that low spatial frequencies are in the center of the 2D fourier transformed image.
             ft_tmp = np.fft.fftshift(ft_tmp, axes=(0,))
             # cut the image down to only include analysis_radius worth of pixels
             if analysis_radius != 0:
                 ft_tmp = ft_tmp[int(ft_size/2 - analysis_radius):int(ft_size/2 + analysis_radius), :analysis_radius]
-            ftimagelist[i] = ft_tmp.copy()
+            ftimagelist[i, ocatave_segment] = ft_tmp.copy()
 
     return ftimagelist, num_files, tmp_file
 
@@ -101,10 +109,10 @@ def twodpowerspectrum(image):
     return image.real ** 2 + image.imag ** 2
 
 
-def ddm_processing(binsize, cutoff, ftimagelist, numimages):
+def ddm_processing(binsize, cutoff, ftimagelist, numimages, octave):
     """The ddm processing loop, this is passed a time series of any length of images of any size."""
 
-    r, nbins, histosamples, = initializeazimuthalaverage(ftimagelist[0], binsize)
+    r, nbins, histosamples, = initializeazimuthalaverage(ftimagelist[0,0], binsize)
     ftOneDSlices = np.zeros((numimages, nbins))
     samplecount = np.zeros(numimages)
 
@@ -148,7 +156,7 @@ def main(binsize, cutoff, images_to_load, analysisradius, image_directory, file_
     if not do_sub_analyses:
         max_octaves = 1
 
-    for octave in range(max_octaves):
+    for octave in range(1, max_octaves + 1):
         ftimagelist, numimages, tmp_file = loadimages(images_to_load, analysisradius, image_directory, file_prefix, file_suffix, octave)
-        ddm_processing(binsize, cutoff, ftimagelist, numimages)
+        ddm_processing(binsize, cutoff, ftimagelist, numimages, octave)
         tmp_file.close()
