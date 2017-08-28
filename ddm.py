@@ -17,8 +17,8 @@ def loadimages(analysis_radius, image_directory, file_prefix, file_suffix, octav
     if ft_size < minimum_octave_size:
         return 1
 
-    if analysis_radius == 0 or analysis_radius > ft_size:
-        analysis_radius = int(ft_size)/2
+    if analysis_radius == 0 or analysis_radius > (ft_size/2):
+        analysis_radius = int(ft_size/2)
 
     tmp_file = TemporaryFile()
     ftimagelist = np.memmap(tmp_file, mode='w+', dtype=np.complex128, shape=(num_files, (octave_number ** 2), analysis_radius*2, analysis_radius))
@@ -156,15 +156,16 @@ def main(binsize, cutoff, images_to_load, analysis_radius, image_directory, file
 
     if not do_sub_analyses:
         max_octaves = 1
+    min_octaves = 6
 
     # The image setup needs to be done only once. This tells us how many images there are and what size they are.
     num_files, min_size = setup_load_images(images_to_load, image_directory, file_prefix, file_suffix)
 
     # Loop through the octaves. Each octave must reload the images as this is the stage where the FT is done.
-    for octave in range(1, max_octaves + 1):
+    for octave in range(min_octaves, max_octaves + 1):
         ftimagelist, numimages, tmp_file = loadimages(analysis_radius, image_directory, file_prefix, file_suffix, octave, num_files, min_size)
         ddm_processing(binsize, cutoff, ftimagelist, numimages, octave)
         tmp_file.close()
 
 
-main(binsize=1, cutoff=250, images_to_load=0, analysis_radius=100, image_directory="example_images/", file_prefix="iii_", file_suffix=".png", do_sub_analyses=True, max_octaves=2)
+main(binsize=0.25, cutoff=250, images_to_load=0, analysis_radius=100, image_directory="example_images/", file_prefix="iii_", file_suffix=".png", do_sub_analyses=True, max_octaves=6)
