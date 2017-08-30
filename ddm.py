@@ -11,17 +11,14 @@ def loadimages(analysis_radius, image_directory, file_prefix, file_suffix, octav
     radius parameter. """
     print("Loading images.")
 
-    minimum_octave_size = 8     # minimum ocatave size in pixels
-
-    ft_size = int(2 ** (np.ceil(np.log2(min_size)) - octave_number + 1))
-    if ft_size < minimum_octave_size:
-        return 1
-
-    if analysis_radius == 0 or analysis_radius > (ft_size/2):
-        analysis_radius = int(ft_size/2)
+    # Calculate the maximum possible chunk size. A chunk always has a side length of power 2.
+    chunk_size = int(2 ** (np.ceil(np.log2(min_size)) - octave_number + 1))
+    # Analysis radius must be at most half the side length or it will fall off the chunk
+    if analysis_radius == 0 or analysis_radius > (chunk_size/2):
+        analysis_radius = int(chunk_size/2)
 
     tmp_file = TemporaryFile()
-    ftimagelist = np.memmap(tmp_file, mode='w+', dtype=np.complex128, shape=(num_files, (octave_number ** 2), analysis_radius*2, analysis_radius))
+    ftimagelist = np.memmap(tmp_file, mode='w+', dtype=np.complex128, shape=(num_files, (2 ** octave_number), analysis_radius*2, analysis_radius))
 
     for file in range(num_files):
         tmp_image = Image.open(image_directory + file_prefix + '{:04d}'.format(file) + file_suffix)
@@ -35,32 +32,17 @@ def loadimages(analysis_radius, image_directory, file_prefix, file_suffix, octav
         else:
             tmp_mean = np.mean(tmp_array)
             tmp_array = tmp_array * (first_mean / tmp_mean)
-        
-        for octave_segment in range((octave_number ** 2)):
-            image_size = tmp_array.shape
-            # calculate the nearest power of 2 to pad the FT array
-            if octave_number == 1:
-                tmp_octave = tmp_array
-            else:
-                octave_column = octave_segment % octave_number
-                if octave_number-octave_column == 1:
-                    col_indices = [octave_column * ft_size, image_size[1]]
-                else:
-                    col_indices = [octave_column * ft_size, octave_column * ft_size + ft_size]
-                octave_row = octave_segment // octave_number
-                if octave_number - octave_row == 1:
-                    row_indices = [octave_row * ft_size, image_size[0]]
-                else:
-                    row_indices = [octave_row * ft_size, octave_row * ft_size + ft_size]
-                tmp_octave = tmp_array[col_indices[0]:col_indices[1], row_indices[0]:row_indices[1]]
 
+        # Get chunks of the image and calculate their Fourier transforms
+        for octave_segment in range((2 ** octave_number)):
+            image_chunk = get_chunk(tmp_array, octave_number, octave_segment, chunk_size)
             # do the Fourier transform
-            ft_tmp = (np.fft.rfft2(tmp_octave, s=(ft_size, ft_size)))
+            ft_tmp = (np.fft.rfft2(image_chunk, s=(chunk_size, chunk_size)))
             # Shift the quadrants so that low spatial frequencies are in the center of the 2D fourier transformed image.
             ft_tmp = np.fft.fftshift(ft_tmp, axes=(0,))
             # cut the image down to only include analysis_radius worth of pixels
             if analysis_radius != 0:
-                ft_tmp = ft_tmp[int(ft_size/2 - analysis_radius):int(ft_size/2 + analysis_radius), :analysis_radius]
+                ft_tmp = ft_tmp[int(chunk_size/2 - analysis_radius):int(chunk_size/2 + analysis_radius), :analysis_radius]
             ftimagelist[file, octave_segment] = ft_tmp.copy()
     print("Image loading complete.")
     return ftimagelist, num_files, tmp_file
@@ -79,6 +61,30 @@ def setup_load_images(num_images, image_directory, file_prefix, file_suffix):
     min_dimension = np.min(Image.open(image_directory + file_prefix + '0000' + file_suffix).size)
 
     return num_files, min_dimension
+
+
+def get_chunk(tmp_array, octave_number, octave_segment, ft_size):
+    image_size = tmp_array.shape
+    # calculate the nearest power of 2 to pad the FT array
+    if octave_number == 1:
+        image_chunk = tmp_array
+    else:
+        # Calculate the column of the chunk and the pixel indices bounding it
+        octave_column = octave_segment % octave_number
+        if octave_number - octave_column == 1:
+            col_indices = [octave_column * ft_size, image_size[1]]
+        else:
+            col_indices = [octave_column * ft_size, octave_column * ft_size + ft_size]
+        # Calculate the row of the chunk and the pixel indices bounding it
+        octave_row = octave_segment // octave_number
+        if octave_number - octave_row == 1:
+            row_indices = [octave_row * ft_size, image_size[0]]
+        else:
+            row_indices = [octave_row * ft_size, octave_row * ft_size + ft_size]
+        # Retrieve the chunk using the column and row indices
+        image_chunk = tmp_array[col_indices[0]:col_indices[1], row_indices[0]:row_indices[1]]
+
+    return image_chunk
 
 
 def initializeazimuthalaverage(image, binsize):
@@ -111,15 +117,15 @@ def ddm_processing(binsize, cutoff, ftimagelist, numimages, num_octaves):
     """The ddm processing loop, this is passed a time series of any length of images of any size."""
     print("Processing octave " + str(num_octaves))
     r, nbins, histosamples, = initializeazimuthalaverage(ftimagelist[0, 0], binsize)
-    ftOneDSlices = np.zeros((numimages, num_octaves**2, nbins))
+    ftOneDSlices = np.zeros((numimages, 2 ** num_octaves, nbins))
     samplecount = np.zeros(numimages)
 
     if cutoff > numimages:
         cutoff = numimages
 
-    pbar = tqdm(total=int(((cutoff - 1) ** 2 + (cutoff - 1)) / 2 + (numimages - cutoff) * cutoff) * num_octaves ** 2)
+    pbar = tqdm(total=int(((cutoff - 1) ** 2 + (cutoff - 1)) / 2 + (numimages - cutoff) * cutoff) * 2 ** num_octaves)
     # Do the analysis
-    for octave in range(num_octaves ** 2):
+    for octave in range(2 ** num_octaves):
         loop_counter = 0
         for framediff in range(1, numimages):
             potential_frames = numimages - framediff
@@ -142,12 +148,12 @@ def ddm_processing(binsize, cutoff, ftimagelist, numimages, num_octaves):
     pbar.close()
 
     # Normalise results, skipping the first empty row
-    for octave in range(num_octaves ** 2):
+    for octave in range(2 ** num_octaves):
         ftOneDSlices[1:, octave, :] = ftOneDSlices[1:, octave, :] / np.transpose(np.array([samplecount[1:]]))
     ftOneDSlices = ftOneDSlices / (ftimagelist[0, 0].shape[0] * ftimagelist[0, 0].shape[1])
     print("Analysis Complete. Result saved to FTOneDSlices.txt")
-    for i in range(num_octaves ** 2):
-        np.savetxt("FTOneDSlices_octave" + str(num_octaves) + "_part_" + '{:04d}'.format(i) + ".txt", ftOneDSlices[:, i, :])
+    for i in range(2 ** num_octaves):
+        np.savetxt("results/FTOneDSlices_octave" + str(num_octaves) + "_part_" + '{:04d}'.format(i) + ".txt", ftOneDSlices[:, i, :])
 
     return 0
 
@@ -156,7 +162,7 @@ def main(binsize, cutoff, images_to_load, analysis_radius, image_directory, file
 
     if not do_sub_analyses:
         max_octaves = 1
-    min_octaves = 6
+    min_octaves = 1
 
     # The image setup needs to be done only once. This tells us how many images there are and what size they are.
     num_files, min_size = setup_load_images(images_to_load, image_directory, file_prefix, file_suffix)
