@@ -170,4 +170,4 @@ def main(binsize, cutoff, images_to_load, analysis_radius, image_directory, file
         tmp_file.close()
 
 
-main(binsize=0.25, cutoff=250, images_to_load=0, analysis_radius=100, image_directory="example_images/", file_prefix="iii_", file_suffix=".png", do_sub_analyses=True, max_octaves=4)
+main(binsize=1, cutoff=250, images_to_load=0, analysis_radius=100, image_directory="example_images/", file_prefix="iii_", file_suffix=".png", do_sub_analyses=True, max_octaves=4)
