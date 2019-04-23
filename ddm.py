@@ -51,8 +51,8 @@ def setup_load_images(num_images, image_directory, file_prefix, file_suffix, ana
         file_list = glob(image_directory + file_prefix + "*" + file_suffix)
         num_files = len(file_list)
         if num_files == 0:
-            print("No files found.")
-            raise KeyboardInterrupt  # Used  to stop execution (instead of sys.exit which kills ipython kernel)
+            print("{}{}0000{} not found".format(image_directory, file_prefix, file_suffix))
+            raise FileNotFoundError
     else:
         num_files = num_images
 
